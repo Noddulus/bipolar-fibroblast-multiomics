@@ -93,7 +93,7 @@ rm ${prefix}.toMark.bam
 * **Tools:** Macs2
 * **Execution:**
 ```bash
-macs2 callpeak -t ${prefix}.final.bam -f BAM -g hs -n $prefix -p 0.01 --shift -75 --extsize 150 --nomodel -B --SPMR --keep-dup all --call-summits
+macs2 callpeak -t ${prefix}.final.bam -f BAM -g hs -n $prefix -p 0.01 --shift -75 --extsize 200 --nomodel -B --SPMR --keep-dup all --call-summits
 ```
 ### Creating a concensus Peak file
 * **Tools:** Bedtools
