@@ -1,7 +1,7 @@
 # Data Preprocessing 
 
 **Note:** The original batch submission scripts executed on the computing cluster are no longer available. However, the exact tools, versions, and parameters used to process the raw `.fastq` files for this project are documented below for full reproducibility.
-
+## ATAC-seq data
 ### Removing low quality reads
 * **Tools:** TrimGalore, Cutadapt
 * **Execution:**
@@ -46,7 +46,7 @@ samtools index ${prefix}.raw.bam
 samtools idxstats ${prefix}.raw.bam > ${prefix}.raw.bam.stats
 ```
 ### Removing PCR duplicates
-* **Tools:** samtools, picard tools, Anaconda
+* **Tools:** samtools, picard tools
 * **Execution:**
 ```bash
 bam_files=(./*raw.bam)
@@ -89,4 +89,48 @@ VALIDATION_STRINGENCY=LENIENT
 
 rm ${prefix}.toMark.bam
 ```
-### Assigning read counts to Peaks (ATAC-seq data)
+### Peak calling 
+* **Tools:** Macs2
+* **Execution:**
+```bash
+macs2 callpeak -t ${prefix}.final.bam -f BAM -g hs -n $prefix -p 0.01 --shift -75 --extsize 150 --nomodel -B --SPMR --keep-dup all --call-summits
+```
+### Creating a concensus Peak file
+* **Tools:** Bedtools
+* **Execution:**
+```bash
+BLACKLIST=/hg38.blacklist.bed
+cat *.narrowPeaks | sort -k1,1 -k2,2n | bedtools merge -d 147 | bedtools subtract -a stdin -b $BLACKLIST > concensuspeaks.bed
+```
+### Assigning reads to peaks
+* **Tools:** FeatureCounts
+* **Execution:**
+```bash
+#To make annotation file
+#awk -v OFS="\t" 'BEGIN {print "GeneID","Chr","Start","End","Strand"} { print "Peak_"NR,$1,$2,$3,"."}' concensuspeaks.bed > concensuspeaks.saf
+Annotationfile=concensuspeaks.saf
+featureCounts -F SAF -a $Annotationfile -o circadian.featurecounts *merged.bam
+```
+## RNA-seq data
+### RNA-seq Quality Control & Trimming
+* **Tools:** FastQC, TrimGalore, Cutadapt
+* **Execution:**
+```bash
+  trim_galore --paired --quality 20 --length 20 sample_R1.fastq.gz sample_R2.fastq.gz
+```
+### RNA-seq Alignment
+* **Tools:** STAR
+* **Reference:** Human genome Ensembl GRCh38
+* **Execution:**
+```bash
+STAR --runMode alignReads \
+       --outFilterType BySJout \
+       --outFilterMultimapNmax 20 \
+       --alignSJoverhangMin 8 \
+       --alignSJDBoverhangMin 1 \
+       --outFilterMismatchNmax 999 \
+       --outFilterMismatchNoverLmax 0.1 \
+       --alignIntronMin 20 \
+       --alignIntronMax 1000000 \
+       --alignMatesGapMax 1000000
+```
